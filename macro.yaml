@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  LambdaParam:
+    Type: String
+    Description: enter the arn of the lambda function
+  EmailParam:
+    Type: String
+    Description: enter the email address Cloud Chaos will use to send you messages
+Resources:
+  Macro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: !Sub '${AWS::StackName}'
+      Description: Adds a macro
+      FunctionName: !Ref 'LambdaParam'
+  Topic:
+    Type: AWS::SNS::Topic
+  Subscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref 'EmailParam'
+      Protocol: email
+      TopicArn: !Ref 'Topic'
+    DependsOn: 'Topic'
+Outputs:
+  SNSTopic:
+    Value: !Ref Topic
+    Export: 
+      Name: CloudChaosSNSTopicID
+        
