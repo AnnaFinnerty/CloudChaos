@@ -1,22 +1,31 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
+    "CCSTemplateFormatVersion": "2020-06-09",
     "CCFields":{
-        "bucketName":{
-            "Values":["value2","value3","value4"],
-            "Weights":["1","1","1"],
-            "Events": ["NoSSH"]
+        "bucket1":{
+            "Values":["red","blue","green"],
+            "Weights":["1","1"],
+            "Events": ["BadTag","MissingBucket"]
         }
     },
-    "CCEvents":[
-        {
-            "NoSSH":["Hi I can't SSH","Hi I can't SSH","Hi I can't SSH"]
-        }
-    ],
+    "CCEvents": {
+        "NoSSH":["I'm can't see to SSH into my EC2 anymore","Can't ssh"],
+    },
     "Transform": [
-        "MacroTestFunc"
+        "CloudChaosMacro"
     ],
-    "Description": "This template deploys a VPC, with a pair of public and private subnets spread across two Availability Zones. It deploys an internet gateway, with a default route on the public subnets. It deploys a pair of NAT gateways (one in each AZ), and default routes for them in the private subnets.",
+    "Description": "This CCtemplate deploys and destroy a VPC, with a pair of public and private subnets spread across two Availability Zones. It deploys an internet gateway, with a default route on the public subnets. It deploys a pair of NAT gateways (one in each AZ), and default routes for them in the private subnets.",
     "Parameters": {
+        "MacroNameParam" : {
+            "Type" : "String",
+            "Default": "CloudChaosMacro",
+            "Description" : "Name of the CloudChaosMacro."
+        },
+        "SNSTopic":{
+            "Type" : "String",
+            "Default": "CloudChaosMacro",
+            "Description" : "Name of the CloudChaosSNSTopic."
+        },
         "EnvironmentName": {
             "Description": "An environment name that is prefixed to resource names",
             "Type": "String"
@@ -277,7 +286,7 @@
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
             "Properties": {
                 "RouteTableId": {
-                    "Ref": "PublicRouteTable"
+                    "Ref": "&&PublicRouteTable"
                 },
                 "SubnetId": {
                     "Ref": "PublicSubnet1"

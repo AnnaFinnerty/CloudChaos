@@ -10,14 +10,14 @@
         "SNSTopic":{
           "Type" : "String",
           "Default": "CloudChaosMacro",
-          "Description" : "Name of the CloudChaosMacro."
+          "Description" : "Name of the CloudChaosSNSTopic."
         }
     },
     "CCFields":{
         "bucket1":{
             "Values":["red","blue","green"],
             "Weights":["1","1"],
-            "Events": ["MissingBucket"]
+            "Events": ["BadTag","MissingBucket"]
         },
         "bucket2":{
             "Values":["Monday","Tuesday","Wednesday"],
@@ -26,7 +26,7 @@
         }
     },
     "CCEvents": {
-            "NoSSH":["Hi I can't SSH","Hi I can't SSH","Hi I can't SSH"],
+            "BadTag":["The tag on my bucket is wrong","Why did the tag change on my bucket?"],
             "MissingBucket":["Hi I can't find my bucket"]
     },
     "Transform": [
