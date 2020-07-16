@@ -2,9 +2,10 @@ AWSTemplateFormatVersion: 2010-09-09
 Parameters:
   LambdaParam:
     Type: String
-    Description: enter the arn of the lambda function
+    Default: "arn:aws:lambda:us-east-1:427334285330:function:MacroTestFunc"
   EmailParam:
     Type: String
+    Default: algfinnerty@gmail.com
     Description: enter the email address Cloud Chaos will use to send you messages
 Resources:
   Macro:
