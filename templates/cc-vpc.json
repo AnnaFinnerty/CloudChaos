@@ -1,16 +1,39 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
     "CCSTemplateFormatVersion": "2020-06-09",
-    "CCFields":{
-        "bucket1":{
+    "CCSEvents":{
+        "NatGateway1":{
+            "Default": "NatGateway1",
+            "Type": "delete",
+            "Events": ["LambdaFailure"]
+        },
+        "InternetGateway":{
+            "Default": "InternetGateway",
+            "Type": "delete",
+            "Events": ["NoSSH"]
+        },
+        "DefaultPublicRoute":{
+            "Default": "InternetGateway",
+            "Type": "delete",
+            "Events": ["NoSSH"]
+        },
+        "bucket1field":{
+            "Type": "alter",
             "Default": "emptyBucket tag",
             "Values":["red","blue","green"],
             "Weights":["1","1"],
-            "Events": ["BadTag","MissingBucket"]
+            "Events": ["MissingBucket"]
         }
     },
-    "CCEvents": {
-        "NoSSH":["I'm can't see to SSH into my EC2 anymore","Can't ssh"],
+    "CCSMessages": {
+            "NoSSH": {
+                "Subjects": ["Hi I can't SSH","Hi I can't SSH","Hi I can't SSH"],
+                "Messages": ["Hi I can't SSH","Hi I can't SSH","Hi I can't SSH"]
+            },
+            "LambdaFailure":{
+                "Subjects": ["Help please, test system not working anymore", "Please fix, this is an urgent issue!"],
+                "Messages": ["I moved my lambda to a VPC, but now it doesn't work. Can you tell me why?", "Lambda in this VPC not working"]
+            }
     },
     "Transform": [
         "CloudChaosMacro"
