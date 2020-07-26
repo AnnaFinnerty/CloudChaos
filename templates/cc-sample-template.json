@@ -1,0 +1,55 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "CCSTemplateFormatVersion": "2020-06-09",
+    "CCSEvents":{
+        "MissingResource":{
+            "Default": "ResourceToDelete",
+            "Type": "delete",
+            "Events": ["MissingEvent"]
+        },
+        "ChangedResource":{
+            "Type": "alter",
+            "Default": "emptyBucket tag",
+            "Values":["red","blue","green"],
+            "Weights":["1","1"],
+            "Events": ["ChangeEvent"]
+        }
+    },
+    "CCSMessages": {
+            "ChangeEvent": {
+                "Subjects": ["Something changed","I noticed something changed"],
+                "Messages": ["Why did this change?","Can you explain this change?"]
+            },
+            "MissingEvent":{
+                "Subjects": ["Hi I can't find my resource", "Where did my resource go?"],
+                "Messages": ["Please find the missing resource.","Why is this resource missing?"]
+            }
+    },
+    "Transform": [
+        { "Name" : "CloudChaosMacro", "Parameters" : {"SNSTopic" : { "Ref" : "SNSTopicArn" } } } 
+    ],
+    "Parameters" : {
+        "SNSTopicArn":{
+          "Type" : "String",
+          "Default": "",
+          "Description" : "Arn of the topic created by CloudChaosMacro."
+        }
+    },
+    "Description": "A description of your template",
+    "Resources": {
+        "&&ResourceToDelete": {
+            "Type": "AWS::<service>::<resource>"
+        },
+        "ResourceToAlter": {
+            "Type": "AWS::<service>::<resource>",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "key",
+                        "Value": "&&value"
+                    }
+                ]
+            }
+        }
+    }
+}

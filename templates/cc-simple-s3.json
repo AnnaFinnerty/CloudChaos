@@ -8,7 +8,7 @@
         },
         "SNSTopicArn":{
           "Type" : "String",
-          "Default": "CloudChaosMacro",
+          "Default": "",
           "Description" : "Arn of the topic created by CloudChaosMacro."
         }
     },
@@ -16,11 +16,9 @@
     "CCSEvents":{
         "EmptyBucket":{
             "Default": "EmptyBucket",
-            "Type": "delete",
             "Events": ["MissingBucket"]
         },
         "bucket1field":{
-            "Type": "alter",
             "Default": "emptyBucket tag",
             "Values":["red","blue","green"],
             "Weights":["1","1"],
