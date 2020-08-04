@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  MacroNameParam:
+    Type: String
+    Default: CloudChaosMacro
+    Description: Name of the CloudChaosMacro.
+  SNSTopicArn:
+    Type: String
+    Default: ''
+    Description: Arn of the topic created by CloudChaosMacro.
+CCSTemplateFormatVersion: 2020-06-09
+CCSEvents:
+  EmptyBucket:
+    Default: EmptyBucket
+    Events:
+      - MissingBucket
+  bucket1field:
+    Default: emptyBucket tag
+    Values:
+      - red
+      - blue
+      - green
+    Weights:
+      - '1'
+      - '1'
+    Events:
+      - MissingBucket
+  bucket2field:
+    Type: alter
+    Default: fullBucket tag
+    Values:
+      - Monday
+      - Tuesday
+      - Wednesday
+    Weights:
+      - '1'
+      - '1'
+    Events:
+      - MissingBucket
+CCSMessages:
+  NoSSH:
+    Subjects:
+      - Hi I can't SSH
+      - Hi I can't SSH
+      - Hi I can't SSH
+    Messages:
+      - Hi I can't SSH
+      - Hi I can't SSH
+      - Hi I can't SSH
+  MissingBucket:
+    Subjects:
+      - Hi I can't find my bucket
+      - Where did my bucket go?
+    Messages:
+      - Hi I can't find my bucket
+      - Where did my bucket go?
+Transform:
+  - CloudChaosMacro
+Description: test
+Resources:
+  '&&EmptyBucket':
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      Tags:
+        - Key: keyname1
+          Value: '&&bucket1field'
+  FullBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      Tags:
+        - Key: keyname1
+          Value: '&&bucket2field'
