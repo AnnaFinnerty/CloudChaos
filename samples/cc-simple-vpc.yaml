@@ -1,0 +1,723 @@
+AWSTemplateFormatVersion: 2010-09-09
+CCSTemplateFormatVersion: 2020-06-09
+CCSEvents:
+  NatGateway1:
+    Default: NatGateway
+    Type: delete
+    Events:
+      - LambdaFailure
+  DefaultPublicRoute:
+    Default: DefaultPublicRoute
+    Type: delete
+    Events:
+      - NoSSH
+      - LambdaFailure
+      - ServerFailure
+  DefaultPublicRouteCidr:
+    Default: 0.0.0.0/0
+    Type: alter
+    Values:
+      - 1.1.1.1/32
+    Events:
+      - NoSSH
+      - LambdaFailure
+      - ServerFailure
+  PublicSubnet1RouteTableAssociationId:
+    Default: PublicSubnet1
+    Type: alter
+    Values:
+      - PrivateSubnet1
+    Events:
+      - IntermittantLambda
+  LambdaExecutionRoleStatementEffect:
+    Default: Allow
+    Type: alter
+    Values:
+      - Deny
+    Events:
+      - LambdaFailure
+  LambdaSubnet1:
+    Default: PrivateSubnet1
+    Type: alter
+    Values:
+      - PublicSubnet1
+    Events:
+      - IntermittantLambda
+    
+CCSMessages:
+  NoSSH:
+    Subjects:
+      - Hi I can't SSH
+      - Hi I can't SSH
+      - Hi I can't SSH
+    Messages:
+      - Hi I can't SSH
+      - Hi I can't SSH
+      - Hi I can't SSH
+  ServerFailure:
+    Subjects:
+      - 'Help please, test system not working anymore'
+      - 'Please fix, this is an urgent issue!'
+    Messages:
+      - >-
+        I moved my lambda to a VPC, but now it doesn't work. Can you tell me
+        why?
+      - Lambda in this VPC doesn't work anymore, please fix
+  LambdaFailure:
+    Subjects:
+      - 'Help please, test system not working anymore'
+      - 'Please fix, this is an urgent issue!'
+    Messages:
+      - >-
+        I moved my lambda to a VPC, but now it doesn't work. Can you tell me
+        why?
+      - Lambda in this VPC doesn't work anymore, please fix
+  IntermittantLambda:
+    Subjects:
+      - 'Help please, we're seeing lambda failures'
+      - 'Please fix, this is an urgent issue!'
+    Messages:
+      - >-
+        I moved my lambda to a VPC, but now we're seeing increased errors downstream. Can you tell me
+        why?
+      - Lambda in this VPC doesn't work all the time, please fix
+Transform:
+  - CloudChaosMacro
+Description: >-
+  This CCtemplate deploys and destroys a VPC with public and private
+  subnets, an EC2 hosting a server, and a lambda. It's up to you to find what's wrong and fix it!
+Parameters:
+  MacroNameParam:
+    Type: String
+    Default: CloudChaosMacro
+    Description: Name of the CloudChaosMacro.
+  SNSTopic:
+    Type: String
+    Default: CloudChaosMacro
+    Description: Name of the CloudChaosSNSTopic.
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Can contain only ASCII characters.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues:
+    - t1.micro
+    - t2.nano
+    - t2.micro
+    - t2.small
+    - t2.medium
+    - t2.large
+    - m1.small
+    - m1.medium
+    - m1.large
+    - m1.xlarge
+    - m2.xlarge
+    - m2.2xlarge
+    - m2.4xlarge
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - m4.large
+    - m4.xlarge
+    - m4.2xlarge
+    - m4.4xlarge
+    - m4.10xlarge
+    - c1.medium
+    - c1.xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - c4.large
+    - c4.xlarge
+    - c4.2xlarge
+    - c4.4xlarge
+    - c4.8xlarge
+    - g2.2xlarge
+    - g2.8xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    - d2.xlarge
+    - d2.2xlarge
+    - d2.4xlarge
+    - d2.8xlarge
+    - hi1.4xlarge
+    - hs1.8xlarge
+    - cr1.8xlarge
+    - cc2.8xlarge
+    - cg1.4xlarge
+    ConstraintDescription: must be a valid EC2 instance type.
+  SSHLocation:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.192.0.0/16
+  PublicSubnet1CIDR:
+    Description: >-
+      Please enter the IP range (CIDR notation) for the public subnet in the
+      first Availability Zone
+    Type: String
+    Default: 10.192.10.0/24
+  PublicSubnet2CIDR:
+    Description: >-
+      Please enter the IP range (CIDR notation) for the public subnet in the
+      second Availability Zone
+    Type: String
+    Default: 10.192.11.0/24
+  PrivateSubnet1CIDR:
+    Description: >-
+      Please enter the IP range (CIDR notation) for the private subnet in the
+      first Availability Zone
+    Type: String
+    Default: 10.192.20.0/24
+  PrivateSubnet2CIDR:
+    Description: >-
+      Please enter the IP range (CIDR notation) for the private subnet in the
+      second Availability Zone
+    Type: String
+    Default: 10.192.21.0/24
+Mappings:
+  AWSInstanceType2Arch:
+    t1.micro:
+      Arch: HVM64
+    t2.nano:
+      Arch: HVM64
+    t2.micro:
+      Arch: HVM64
+    t2.small:
+      Arch: HVM64
+    t2.medium:
+      Arch: HVM64
+    t2.large:
+      Arch: HVM64
+    m1.small:
+      Arch: HVM64
+    m1.medium:
+      Arch: HVM64
+    m1.large:
+      Arch: HVM64
+    m1.xlarge:
+      Arch: HVM64
+    m2.xlarge:
+      Arch: HVM64
+    m2.2xlarge:
+      Arch: HVM64
+    m2.4xlarge:
+      Arch: HVM64
+    m3.medium:
+      Arch: HVM64
+    m3.large:
+      Arch: HVM64
+    m3.xlarge:
+      Arch: HVM64
+    m3.2xlarge:
+      Arch: HVM64
+    m4.large:
+      Arch: HVM64
+    m4.xlarge:
+      Arch: HVM64
+    m4.2xlarge:
+      Arch: HVM64
+    m4.4xlarge:
+      Arch: HVM64
+    m4.10xlarge:
+      Arch: HVM64
+    c1.medium:
+      Arch: HVM64
+    c1.xlarge:
+      Arch: HVM64
+    c3.large:
+      Arch: HVM64
+    c3.xlarge:
+      Arch: HVM64
+    c3.2xlarge:
+      Arch: HVM64
+    c3.4xlarge:
+      Arch: HVM64
+    c3.8xlarge:
+      Arch: HVM64
+    c4.large:
+      Arch: HVM64
+    c4.xlarge:
+      Arch: HVM64
+    c4.2xlarge:
+      Arch: HVM64
+    c4.4xlarge:
+      Arch: HVM64
+    c4.8xlarge:
+      Arch: HVM64
+    g2.2xlarge:
+      Arch: HVMG2
+    g2.8xlarge:
+      Arch: HVMG2
+    r3.large:
+      Arch: HVM64
+    r3.xlarge:
+      Arch: HVM64
+    r3.2xlarge:
+      Arch: HVM64
+    r3.4xlarge:
+      Arch: HVM64
+    r3.8xlarge:
+      Arch: HVM64
+    i2.xlarge:
+      Arch: HVM64
+    i2.2xlarge:
+      Arch: HVM64
+    i2.4xlarge:
+      Arch: HVM64
+    i2.8xlarge:
+      Arch: HVM64
+    d2.xlarge:
+      Arch: HVM64
+    d2.2xlarge:
+      Arch: HVM64
+    d2.4xlarge:
+      Arch: HVM64
+    d2.8xlarge:
+      Arch: HVM64
+    hi1.4xlarge:
+      Arch: HVM64
+    hs1.8xlarge:
+      Arch: HVM64
+    cr1.8xlarge:
+      Arch: HVM64
+    cc2.8xlarge:
+      Arch: HVM64
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: ami-0ff8a91507f77f867
+      HVMG2: ami-0a584ac55a7631c0c
+    us-west-2:
+      HVM64: ami-a0cfeed8
+      HVMG2: ami-0e09505bc235aa82d
+    us-west-1:
+      HVM64: ami-0bdb828fd58c52235
+      HVMG2: ami-066ee5fd4a9ef77f1
+    eu-west-1:
+      HVM64: ami-047bb4163c506cd98
+      HVMG2: ami-0a7c483d527806435
+    eu-west-2:
+      HVM64: ami-f976839e
+      HVMG2: NOT_SUPPORTED
+    eu-west-3:
+      HVM64: ami-0ebc281c20e89ba4b
+      HVMG2: NOT_SUPPORTED
+    eu-central-1:
+      HVM64: ami-0233214e13e500f77
+      HVMG2: ami-06223d46a6d0661c7
+    ap-northeast-1:
+      HVM64: ami-06cd52961ce9f0d85
+      HVMG2: ami-053cdd503598e4a9d
+    ap-northeast-2:
+      HVM64: ami-0a10b2721688ce9d2
+      HVMG2: NOT_SUPPORTED
+    ap-northeast-3:
+      HVM64: ami-0d98120a9fb693f07
+      HVMG2: NOT_SUPPORTED
+    ap-southeast-1:
+      HVM64: ami-08569b978cc4dfa10
+      HVMG2: ami-0be9df32ae9f92309
+    ap-southeast-2:
+      HVM64: ami-09b42976632b27e9b
+      HVMG2: ami-0a9ce9fecc3d1daf8
+    ap-south-1:
+      HVM64: ami-0912f71e06545ad88
+      HVMG2: ami-097b15e89dbdcfcf4
+    us-east-2:
+      HVM64: ami-0b59bfac6be064b78
+      HVMG2: NOT_SUPPORTED
+    ca-central-1:
+      HVM64: ami-0b18956f
+      HVMG2: NOT_SUPPORTED
+    sa-east-1:
+      HVM64: ami-07b14488da8ea02a0
+      HVMG2: NOT_SUPPORTED
+    cn-north-1:
+      HVM64: ami-0a4eaf6c4454eda75
+      HVMG2: NOT_SUPPORTED
+    cn-northwest-1:
+      HVM64: ami-6b6a7d09
+      HVMG2: NOT_SUPPORTED
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+  InternetGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName} Public Subnet (AZ1)'
+  PublicSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select 
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName} Public Subnet (AZ2)'
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName} Private Subnet (AZ1)'
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select 
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName} Private Subnet (AZ2)'
+  NatGateway1EIP:
+    Type: 'AWS::EC2::EIP'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+  NatGateway2EIP:
+    Type: 'AWS::EC2::EIP'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+  NatGateway1:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt 
+        - NatGateway1EIP
+        - AllocationId
+      SubnetId: !Ref PublicSubnet1
+  NatGateway2:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt 
+        - NatGateway2EIP
+        - AllocationId
+      SubnetId: !Ref PublicSubnet2
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName} Public Routes'
+  &&DefaultPublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: &&DefaultPublicRouteCidr
+      GatewayId: !Ref InternetGateway
+  PublicSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref &&PublicSubnet1RouteTableAssociationId
+  PublicSubnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+  PrivateRouteTable1:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName} Private Routes (AZ1)'
+  DefaultPrivateRoute1:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+  PrivateSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+  PrivateRouteTable2:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName} Private Routes (AZ2)'
+  DefaultPrivateRoute2:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+  PrivateSubnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+  NoIngressSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: no-ingress-sg
+      GroupDescription: Security group with no ingress rule
+      VpcId: !Ref VPC
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+         import json
+         def lambda_handler(event, context):
+            return {
+                'statusCode': 200,
+                'body': json.dumps('Hello from Lambda!')
+            }
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt: [ LambdaExecutionRole , "Arn" ]
+      Runtime: python3.6
+      Timeout: 60
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref NoIngressSecurityGroup
+        SubnetIds:
+          - !Ref &&LambdaSubnet1
+          - !Ref PrivateSubnet2
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: &&LambdaExecutionRoleStatementEffect
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:*'
+                Resource: 'arn:aws:logs:*:*:*'
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId:
+        Fn::FindInMap:
+        - AWSRegionArch2AMI
+        - Ref: AWS::Region
+        - Fn::FindInMap:
+          - AWSInstanceType2Arch
+          - Ref: InstanceType
+          - Arch
+      InstanceType:
+        Ref: InstanceType
+      SecurityGroups:
+      - Ref: WebServerSecurityGroup
+      SubnetId:
+      - Ref: PublicSubnet1
+      KeyName:
+        Ref: KeyName
+    Metadata:
+      Comment1: Configure the bootstrap helpers to install the Apache Web Server and PHP
+      Comment2: Save website content to /var/www/html/index.php
+      AWS::CloudFormation::Init:
+        configSets:
+          Install:
+          - Install
+        Install:
+          packages:
+            yum:
+              mysql: []
+              mysql-server: []
+              mysql-libs: []
+              httpd: []
+              php: []
+              php-mysql: []
+          files:
+            "/var/www/html/index.php":
+              content:
+                Fn::Join:
+                - ''
+                - - "<html>\n"
+                  - "  <head>\n"
+                  - "    <title>AWS CloudFormation PHP Sample</title>\n"
+                  - '    <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+
+      '
+                  - "  </head>\n"
+                  - "  <body>\n"
+                  - "    <h1>Welcome to the AWS CloudFormation PHP Sample</h1>\n"
+                  - "    <p/>\n"
+                  - "    <?php\n"
+                  - "      // Print out the current data and time\n"
+                  - '      print "The Current Date and Time is: <br/>";
+
+      '
+                  - '      print date("g:i A l, F j Y.");
+
+      '
+                  - "    ?>\n"
+                  - "    <p/>\n"
+                  - "    <?php\n"
+                  - "      // Setup a handle for CURL\n"
+                  - "      $curl_handle=curl_init();\n"
+                  - "      curl_setopt($curl_handle,CURLOPT_CONNECTTIMEOUT,2);\n"
+                  - "      curl_setopt($curl_handle,CURLOPT_RETURNTRANSFER,1);\n"
+                  - "      // Get the hostname of the instance from the instance metadata\n"
+                  - "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/public-hostname');\n"
+                  - "      $hostname = curl_exec($curl_handle);\n"
+                  - "      if (empty($hostname))\n"
+                  - "      {\n"
+                  - '        print "Sorry, for some reason, we got no hostname back <br
+                    />";
+
+      '
+                  - "      }\n"
+                  - "      else\n"
+                  - "      {\n"
+                  - '        print "Server = " . $hostname . "<br />";
+
+      '
+                  - "      }\n"
+                  - "      // Get the instance-id of the instance from the instance metadata\n"
+                  - "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/instance-id');\n"
+                  - "      $instanceid = curl_exec($curl_handle);\n"
+                  - "      if (empty($instanceid))\n"
+                  - "      {\n"
+                  - '        print "Sorry, for some reason, we got no instance id back <br
+                    />";
+
+      '
+                  - "      }\n"
+                  - "      else\n"
+                  - "      {\n"
+                  - '        print "EC2 instance-id = " . $instanceid . "<br />";
+
+      '
+                  - "      }\n"
+                  - '      $Database   = "'
+                  - Ref: DBName
+                  - "\";\n"
+                  - '      $DBUser     = "'
+                  - Ref: DBUsername
+                  - "\";\n"
+                  - '      $DBPassword = "'
+                  - Ref: DBPassword
+                  - "\";\n"
+                  - '      print "Database = " . $Database . "<br />";
+
+      '
+                  - "      $dbconnection = mysql_connect($Database, $DBUser, $DBPassword)\n"
+                  - '                      or die("Could not connect: " . mysql_error());
+
+      '
+                  - '      print ("Connected to $Database successfully");
+
+      '
+                  - "      mysql_close($dbconnection);\n"
+                  - "    ?>\n"
+                  - "    <h2>PHP Information</h2>\n"
+                  - "    <p/>\n"
+                  - "    <?php\n"
+                  - "      phpinfo();\n"
+                  - "    ?>\n"
+                  - "  </body>\n"
+                  - "</html>\n"
+              mode: '000600'
+              owner: apache
+              group: apache
+          services:
+            sysvinit:
+              httpd:
+                enabled: 'true'
+                ensureRunning: 'true'
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP access via port 80
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        CidrIp:
+          Ref: SSHLocation
+Outputs:
+  WebsiteURL:
+    Description: website URL
+    Value:
+      Fn::Join:
+      - ''
+      - - http://
+        - Fn::GetAtt:
+          - WebServerInstance
+          - PublicDnsName

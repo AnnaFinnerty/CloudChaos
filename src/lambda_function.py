@@ -1,46 +1,42 @@
+import boto3
 import sys
 import json
 import random
 
+client = boto3.client('sns')
+
 def load_monkeys(template):
-    print("loading monkeys")
-    # make sure this is a ccs template
     if template['CCSTemplateFormatVersion']:
         print(template['CCSTemplateFormatVersion'])
-        if template['CCFields']:
-            global fields, target, value
-            ##load fields
-            fields = template['CCFields']
+        if template['CCSEvents']:
+            global fields, target, value, subject, message
+            fields = template['CCSEvents']
             keys = list(fields.keys())
-            ##choose random event from event pool
             r = random.randrange(len(keys))
             target = keys[r]
-            event = fields[target]
-            print('event: ')
-            print(event)
-            # print('target: ' + str(target))
-            ##choose random value from event pool
-            r = random.randrange(len(event['Values']))
-            value = event['Values'][random.randrange(len(event['Values']))]
-            print('value: ' + str(value))
-            scenario = event['Events'][random.randrange(len(event['Events']))]
-            print('scenario: ' + str(scenario))
-            messages = template['CCEvents'][scenario]
-            print('messages')
-            print(messages)
+            ccsevent = fields[target]
+            if 'Values' in ccsevent:
+                r = random.randrange(len(ccsevent['Values']))
+                value = ccsevent['Values'][random.randrange(len(ccsevent['Values']))]
+            else:
+                value =  target + ' deleted'
+            scenario = ccsevent['Events'][random.randrange(len(ccsevent['Events']))]
+            subjects = template['CCSMessages'][scenario]['Subjects']
+            subject = subjects[random.randrange(len(subjects))]
+            messages = template['CCSMessages'][scenario]['Messages']
             message = messages[random.randrange(len(messages))]
-            print('message ' + message)
-            ##remove flags and events
             if 'Outputs' not in template:
                  template['Outputs'] = {}
             template['Outputs']['CloudChaosScenario'] = {} 
             template['Outputs']['CloudChaosScenario']['Value'] = scenario
+            template['Outputs']['CloudChaosSubject'] = {} 
+            template['Outputs']['CloudChaosSubject']['Value'] = subject
             template['Outputs']['CloudChaosMessage'] = {} 
             template['Outputs']['CloudChaosMessage']['Value'] = message
             template['Outputs']['CloudChaosSolution'] = {}
             template['Outputs']['CloudChaosSolution']['Value'] = value + " instead of " + target
-            template.pop('CCFields')
-            template.pop('CCEvents')
+            template.pop('CCSMessages')
+            template.pop('CCSEvents')
             template.pop('CCSTemplateFormatVersion')
         template = walk(template)
     return template
@@ -48,33 +44,44 @@ def load_monkeys(template):
 
 def walk(node):
     if isinstance(node, dict):
-        return { k: walk(v) for k, v in node.items() }
+        for a, b in node.items():
+            if a.startswith('&&'):
+                if a[2:] == target:
+                    node.pop(a)
+                return { swap(k): walk(v) for k, v in node.items() }
+        return { swap(k): walk(v) for k, v in node.items() }
     elif isinstance(node, list):
         return [walk(elem) for elem in node]
     elif isinstance(node, str):
-        print('on string ' + node)
         node=swap(node)
         return node
     else:
         return node
 
 def swap(key):
-    print('original: ' + key)
+    defaultNeeded = False
     if key.startswith('&&'):
-        print('swapping: ' + key)
+        defaultNeeded = True
         key = key[2:]
-        print('swapped: ' + key)
     if key == target:
         return value
+    elif defaultNeeded:
+        return fields[key]['Default']
     else:
-        print('returning: ' + key)
         return key
 
+def send_email():
+    response = client.publish(
+        TopicArn='arn:aws:sns:us-east-1:427334285330:CloudChaosMacro-Topic-11A96R9N6ZEX2',
+        Message=message,
+        Subject=subject
+    )
+
 def lambda_handler(event, context):
-    print(event)
     parsed_template = load_monkeys(event['fragment'])
     print('parsed template')
     print(parsed_template)
+    send_email()
     macro_response = {
         "requestId": event["requestId"],
         "status": "success",
@@ -89,7 +96,6 @@ def main(cf_template):
         "requestId": "123456789",
 		"fragment": json.loads(r)
     }
-    # print(fake_cf_event)
     lambda_handler(fake_cf_event,False)
 
 if __name__ == '__main__':

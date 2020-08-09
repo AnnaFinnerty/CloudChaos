@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
 CCSTemplateFormatVersion: 2020-06-09
 CCSEvents:
-  NatGateway1:
-    Default: NatGateway1
+  NatGateway:
+    Default: NatGateway
     Type: delete
     Events:
       - LambdaFailure
@@ -11,11 +11,13 @@ CCSEvents:
     Type: delete
     Events:
       - NoSSH
+      - LambdaFailure
   DefaultPublicRoute:
     Default: InternetGateway
     Type: delete
     Events:
       - NoSSH
+      - LambdaFailure
   bucket1field:
     Type: alter
     Default: emptyBucket tag
@@ -50,10 +52,8 @@ CCSMessages:
 Transform:
   - CloudChaosMacro
 Description: >-
-  This CCtemplate deploys and destroy a VPC, with a pair of public and private
-  subnets spread across two Availability Zones. It deploys an internet gateway,
-  with a default route on the public subnets. It deploys a pair of NAT gateways
-  (one in each AZ), and default routes for them in the private subnets.
+  This CCtemplate deploys and destroys a VPC with public and private
+  subnets, an EC2 hosting a server, and a lambda. It's up to you to find what's wrong and fix it!
 Parameters:
   MacroNameParam:
     Type: String
@@ -256,7 +256,6 @@ Resources:
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: "CloudChaosMacroFunction"
       Code:
         ZipFile: |
          import json
