@@ -1,45 +1,59 @@
 # CloudChaos
 
-CloudChaos is a CloudFormation Macro that formats special templates -- CloudChaos templates -- that include rules for breaking templates at randomly each time the stack is updated, based on predefined events. User messages provide feedback on the error occuring. Suitable for testing, training, or challenging yourself.
+CloudChaos is a CloudFormation Macro that formats special templates -- CloudChaos templates -- that include rules for breaking templates randomly each time the stack is updated, based on predefined events, and sending a message telling you whats broken this time. Suitable for testing, training, or challenging yourself in JSON or YAML.
+
+## Answers
+
+Answers are only currently only viewable 
 
 ## Install
 
-First create a Lambda function and upload function.zip to it. Copy the arn of that Lambda, you'll need it in a second.
+Before using a CloudChaos template, you need to launch the CloudChaosMacro.yaml in the region you want to work in. You'll need to provide an email address to get email notifications on what's wrong with the stack.
 
-Next, create a CloudFormation stack using macro.yaml as a template. You will need to provide two variables: the arn of the Lambda you just created, and the email address you want to recieve user messages on.
+## Run Template
 
-## Run
+When you run a CloudChaos template for the first time.
 
-After the Macro is installed, CloudChaos templates can be launched like normal CloudFormation templates. If CloudChaos templates are launched when the macro is not installed/in another region, the template launch will fail.
+To get a new version of the same template, you can delete the stack and start reupload the same template for a new bug to fix. You can also update the stack and reupload the template -- but don't be tempted to cheat by watching what updates!
 
 ## Write
 
-To create you own CloudChaos templates to run with the macro, start by identifying parts of a template you want to be able to randomly effect. Remove those values, and replace it with a label that begins with the &&:
-                    {
-                        "Key": "keyname",
-                        "Value": "&&chaos"
-                    }
+Start by replacing the values you want to (potentially) change with a keyname that begins with the && ('&&Value'). Keynames may not match the names of resources in the template. Adding && in front of a resource name will mark it for potential deletion. 
 
-### CCEvents
+In the example below, an EC2 instance can be deleted; but it may be also be launched in the wrong subnet. IMPORTANT: in YAML, the names of resources must be surrounded by quotes.
 
-Now, create a event in CCEvents, with the same name as the label. 
+                  '&&DeleteInstanceEvent':
+                    Type: AWS::EC2::Instance
+                    Properties:
+                      SubnetId: !Ref '&&InstanceSubnetEvent'
+                      
+  
+### Events
 
-      "bucket1field":{
-            "Type": "random",
-            "Default": "emptyBucket tag",
-            "Values":["red","blue","green"],
-            "Weights":["1","1","1"],
-            "Events": ["MissingBucket","WriteFailed"]
-        },
+For the chaos to happen, each key needs a matching entry in CCEvents. The macro uses CCEvents as the master list of all the things that can go wrong, selecting a new event at random each time.
 
-Adding && in front of a resource name will mark it for potential deletion. Delete events must have the same name as the resource being deleted.
+      DeleteInstanceEvent:
+        Default: "Instance"
+        Type: delete
+        Events:
+          - NoSSH
+          - ServerFailure
+      InstanceSubnetEvent:
+        Default: PublicSubnet
+        Type: alter
+        Values:
+          - 1.1.1.1/32
+        Events:
+          - NoSSH
+          - LambdaFailure
+          - ServerFailure
+
+ Delete events must have the same name as the resource being deleted. Adding && may lead to templates that will fail on launch. 
 
         "EmptyBucket":{
             "Type": "delete",
             "Events": ["MissingBucket"]
         },
-
-Adding && in front of other field may break the macro, and lead to templates that will fail on launch.
 
 ### CCMessages
 
