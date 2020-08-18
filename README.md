@@ -2,19 +2,15 @@
 
 CloudChaos is a CloudFormation Macro that formats special templates -- CloudChaos templates -- that include rules for breaking templates randomly each time the stack is updated, based on predefined events, and sending a message telling you whats broken this time. Suitable for testing, training, or challenging yourself in JSON or YAML.
 
-## Answers
-
-Answers are only currently only viewable 
-
 ## Install
 
-Before using a CloudChaos template, you need to launch the CloudChaosMacro.yaml in the region you want to work in. You'll need to provide an email address to get email notifications on what's wrong with the stack.
+Before using a CloudChaos template, you need to launch the CloudChaosMacro.yaml stack in the region you want to work in. You'll also need to provide an email address to get email notifications on what's wrong with the stack.
 
 ## Run Template
 
-When you run a CloudChaos template for the first time.
+When you run a CloudChaos template for the first time, you'll need to provide the ARN of the SNS topic created by the macro; you can find this in the 'outputs' tab for the macro. You'll also need to provide any other fields required by that particular stack.
 
-To get a new version of the same template, you can delete the stack and start reupload the same template for a new bug to fix. You can also update the stack and reupload the template -- but don't be tempted to cheat by watching what updates!
+To get a stack, you can delete the stack and make a new one, and you'll get a new bug to fix. You can also update the stack and reupload the template -- but don't be tempted to cheat by watching what updates!
 
 ## Write
 
